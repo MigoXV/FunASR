@@ -10,12 +10,12 @@ from setuptools import setup
 
 requirements = {
     "install": [
-        "scipy>=1.4.1",
+        "scipy",
         "librosa",
         "jamo",  # For kss
-        "PyYAML>=5.1.2",
-        "soundfile>=0.12.1",
-        "kaldiio>=2.17.0",
+        "PyYAML",
+        "soundfile",
+        "kaldiio",
         "torch_complex",
         # "nltk>=3.4.5",
         "sentencepiece",  # train
@@ -26,7 +26,7 @@ requirements = {
         # "espnet_tts_frontend",
         # ENH
         "pytorch_wpe",
-        "editdistance>=0.5.2",
+        "editdistance",
         # "g2p",
         # "nara_wpe",
         # PAI
@@ -37,7 +37,7 @@ requirements = {
         "tqdm",
         "umap_learn",
         "jaconv",
-        "hydra-core>=1.3.2",
+        "hydra-core",
         "tensorboardX",
         # "rotary_embedding_torch",
         "requests",
