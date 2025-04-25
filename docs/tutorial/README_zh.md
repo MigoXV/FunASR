@@ -39,7 +39,7 @@ print(res)
 model = AutoModel(model=[str], device=[str], ncpu=[int], output_dir=[str], batch_size=[int], hub=[str], **kwargs)
 ```
 - `model`(str): [模型仓库](https://github.com/alibaba-damo-academy/FunASR/tree/main/model_zoo) 中的模型名称，或本地磁盘中的模型路径
-- `device`(str): `cuda:0`（默认gpu0），使用 GPU 进行推理，指定。如果为`cpu`，则使用 CPU 进行推理
+- `device`(str): `cuda:0`（默认gpu0），使用 GPU 进行推理，指定。如果为`cpu`，则使用 CPU 进行推理。`mps`：mac电脑M系列新品试用mps进行推理。`xpu`：使用英特尔gpu进行推理。
 - `ncpu`(int): `4` （默认），设置用于 CPU 内部操作并行性的线程数
 - `output_dir`(str): `None` （默认），如果设置，输出结果的输出路径
 - `batch_size`(int): `1` （默认），解码时的批处理，样本个数
@@ -213,7 +213,7 @@ bash finetune.sh
 ### 详细参数介绍
 
 ```shell
-funasr/bin/train.py \
+funasr/bin/train_ds.py \
 ++model="${model_name_or_model_dir}" \
 ++train_data_set_list="${train_data}" \
 ++valid_data_set_list="${val_data}" \
@@ -231,7 +231,7 @@ funasr/bin/train.py \
 ++output_dir="${output_dir}" &> ${log_file}
 ```
 
-- `model`（str）：模型名字（模型仓库中的ID），此时脚本会自动下载模型到本读；或者本地已经下载好的模型路径。
+- `model`（str）：模型名字（模型仓库中的ID），此时脚本会自动下载模型到本地；或者本地已经下载好的模型路径。
 - `train_data_set_list`（str）：训练数据路径，默认为jsonl格式，具体参考（[例子](https://github.com/alibaba-damo-academy/FunASR/blob/main/data/list)）。
 - `valid_data_set_list`（str）：验证数据路径，默认为jsonl格式，具体参考（[例子](https://github.com/alibaba-damo-academy/FunASR/blob/main/data/list)）。
 - `dataset_conf.batch_type`（str）：`example`（默认），batch的类型。`example`表示按照固定数目batch_size个样本组batch；`length` or `token` 表示动态组batch，batch总长度或者token数为batch_size。
@@ -258,7 +258,7 @@ export CUDA_VISIBLE_DEVICES="0,1"
 gpu_num=$(echo $CUDA_VISIBLE_DEVICES | awk -F "," '{print NF}')
 
 torchrun --nnodes 1 --nproc_per_node ${gpu_num} \
-../../../funasr/bin/train.py ${train_args}
+../../../funasr/bin/train_ds.py ${train_args}
 ```
 --nnodes 表示参与的节点总数，--nproc_per_node 表示每个节点上运行的进程数
 
@@ -270,7 +270,7 @@ export CUDA_VISIBLE_DEVICES="0,1"
 gpu_num=$(echo $CUDA_VISIBLE_DEVICES | awk -F "," '{print NF}')
 
 torchrun --nnodes 2 --node_rank 0 --nproc_per_node ${gpu_num} --master_addr 192.168.1.1 --master_port 12345 \
-../../../funasr/bin/train.py ${train_args}
+../../../funasr/bin/train_ds.py ${train_args}
 ```
 在从节点上（假设IP为192.168.1.2），你需要确保MASTER_ADDR和MASTER_PORT环境变量与主节点设置的一致，并运行同样的命令：
 ```shell
@@ -278,7 +278,7 @@ export CUDA_VISIBLE_DEVICES="0,1"
 gpu_num=$(echo $CUDA_VISIBLE_DEVICES | awk -F "," '{print NF}')
 
 torchrun --nnodes 2 --node_rank 1 --nproc_per_node ${gpu_num} --master_addr 192.168.1.1 --master_port 12345 \
-../../../funasr/bin/train.py ${train_args}
+../../../funasr/bin/train_ds.py ${train_args}
 ```
 
 --nnodes 表示参与的节点总数，--node_rank 表示当前节点id，--nproc_per_node 表示每个节点上运行的进程数（通常为gpu个数）
@@ -330,6 +330,25 @@ jsonl2scp \
 ++data_type_list='["source", "target"]' \
 ++jsonl_file_in="../../../data/list/train.jsonl"
 ```
+
+#### 大数据训练
+如果数据量很大，例如5万小时以上，这时候容易遇到内存不足的问题，特别是多gpu实验，这时候需要对jsonl文件进行切分成slice，然后写到txt里面，一行一个slice，然后设置`data_split_num`，例如：
+```shell
+train_data="/root/data/list/data.list"
+
+funasr/bin/train_ds.py \
+++train_data_set_list="${train_data}" \
+++dataset_conf.data_split_num=256
+```
+其中：
+`data.list`：为纯文本，内容是切割后的jsonl文件，例如，`data.list`的内容为：
+```bash
+data/list/train.0.jsonl
+data/list/train.1.jsonl
+...
+```
+`data_split_num`：表示切分slice分组个数，例如，data.list中共512行，data_split_num=256，表示分成256组，每组有2个jsonl文件，这样每次只load 2个jsonl数据进行训练，从而降低训练过程中内存使用。注意是按照顺序分组。
+如果是，非常大，并且数据类型差异比较大，建议切分时候进行数据均衡。
 
 #### 查看训练日志
 
@@ -497,4 +516,4 @@ model_conf:
 ```
 
 
-[更多详细教程文档](https://github.com/modelscope/FunASR/blob/main/docs/tutorial/Tables_zh.md)
+[关于注册更多详细教程文档](https://github.com/modelscope/FunASR/blob/main/docs/tutorial/Tables_zh.md)
